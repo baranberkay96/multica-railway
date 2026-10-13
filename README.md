@@ -1,5 +1,7 @@
 # Deploy and Host Multica with Railway
 
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/multica-v06-ai-agent-team-workspace?referralCode=20H68q)
+
 Multica is a source-available workspace where people and AI coding agents work from the same issue board. You assign an issue to an agent such as Claude Code or Codex the way you would assign a teammate, and every run, message and result is tracked on the issue. This community template deploys Multica v0.6.2 on Railway.
 
 ## About Hosting Multica
