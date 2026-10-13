@@ -1,0 +1,506 @@
+{
+  "name": "Multica v0.6 AI Agent Team Workspace",
+  "description": "Assign issues to coding agents like teammates and track every run.",
+  "category": "AI/ML",
+  "tags": [
+    "multica",
+    "ai-agents",
+    "coding-agents",
+    "claude-code",
+    "codex",
+    "issue-tracker",
+    "project-management",
+    "postgres",
+    "redis"
+  ],
+  "image": "https://cdn.jsdelivr.net/gh/multica-ai/multica@v0.6.2/apps/web/public/favicon.svg",
+  "upstream": {
+    "repo": "multica-ai/multica",
+    "version": "v0.6.2",
+    "checked": "2026-10-13"
+  },
+  "services": {
+    "Gateway": {
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/caddy.svg",
+      "source": {
+        "repo": "baranberkay96/multica-railway",
+        "rootDirectory": "/services/gateway"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": "/_gateway/health",
+      "healthcheckTimeout": 300,
+      "restartPolicyType": "ALWAYS",
+      "restartPolicyMaxRetries": null,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": true,
+      "targetPort": 8080,
+      "tcpProxy": null,
+      "volume": null,
+      "variables": {
+        "PORT": {
+          "defaultValue": "8080",
+          "description": "Port Caddy listens on; the public domain and the healthcheck target it.",
+          "required": false
+        },
+        "MULTICA_WEB_UPSTREAM": {
+          "defaultValue": "${{Multica Web.RAILWAY_PRIVATE_DOMAIN}}:${{Multica Web.PORT}}",
+          "description": "Private address of the Multica web app (receives every path not listed below).",
+          "required": false
+        },
+        "MULTICA_BACKEND_UPSTREAM": {
+          "defaultValue": "${{Multica Backend.RAILWAY_PRIVATE_DOMAIN}}:${{Multica Backend.PORT}}",
+          "description": "Private address of the Multica backend (receives /ws, /api/daemon/ws and /health).",
+          "required": false
+        }
+      }
+    },
+    "Multica Web": {
+      "icon": "https://cdn.jsdelivr.net/gh/multica-ai/multica@v0.6.2/apps/web/public/favicon.svg",
+      "source": {
+        "image": "ghcr.io/multica-ai/multica-web:v0.6.2"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": "/login",
+      "healthcheckTimeout": 300,
+      "restartPolicyType": "ALWAYS",
+      "restartPolicyMaxRetries": null,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": null,
+      "variables": {
+        "PORT": {
+          "defaultValue": "3000",
+          "description": "Port the Next.js server listens on (the gateway and the healthcheck use it).",
+          "required": false
+        },
+        "HOSTNAME": {
+          "defaultValue": "::",
+          "description": "Bind address. '::' is dual-stack in Node, so IPv4 and IPv6 private networking both work.",
+          "required": false
+        },
+        "REMOTE_API_URL": {
+          "defaultValue": "http://${{Multica Backend.RAILWAY_PRIVATE_DOMAIN}}:${{Multica Backend.PORT}}",
+          "description": "Backend origin (no path). The web server forwards /api, /auth, /v1 and /uploads there at runtime.",
+          "required": false
+        },
+        "DOCS_URL": {
+          "defaultValue": "https://multica.ai",
+          "description": "Where /docs is proxied to. Leave the official docs or clear it to disable /docs.",
+          "required": false
+        }
+      }
+    },
+    "Multica Backend": {
+      "icon": "https://cdn.jsdelivr.net/gh/multica-ai/multica@v0.6.2/apps/web/public/favicon.svg",
+      "source": {
+        "image": "ghcr.io/multica-ai/multica-backend:v0.6.2"
+      },
+      "startCommand": null,
+      "preDeployCommand": "/app/migrate up",
+      "preDeployTimeoutSeconds": 1200,
+      "healthcheckPath": "/readyz",
+      "healthcheckTimeout": 600,
+      "restartPolicyType": "ALWAYS",
+      "restartPolicyMaxRetries": null,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": null,
+      "variables": {
+        "PORT": {
+          "defaultValue": "8080",
+          "description": "Port of the Go API/WebSocket server (dual-stack); the healthcheck probes it.",
+          "required": false
+        },
+        "APP_ENV": {
+          "defaultValue": "production",
+          "description": "Enables production safety checks (insecure JWT secrets and fixed verification codes are refused).",
+          "required": false
+        },
+        "DATABASE_URL": {
+          "defaultValue": "${{Postgres.DATABASE_URL}}",
+          "description": "Postgres connection string on the private network.",
+          "required": false
+        },
+        "DATABASE_MAX_CONNS": {
+          "defaultValue": "20",
+          "description": "Max Postgres connections per backend replica. Keep replicas x this well below Postgres max_connections (100).",
+          "required": false
+        },
+        "MULTICA_DATABASE_STARTUP_TIMEOUT": {
+          "defaultValue": "15m",
+          "description": "How long migrations and the server keep retrying while Postgres is still starting.",
+          "required": false
+        },
+        "REDIS_URL": {
+          "defaultValue": "${{Redis.REDIS_URL}}",
+          "description": "Redis for per-IP auth rate limiting, the realtime relay between replicas and task-claim caches.",
+          "required": false
+        },
+        "JWT_SECRET": {
+          "defaultValue": "${{secret(64, \"abcdef0123456789\")}}",
+          "description": "Signs sessions, daemon tokens and attachment/avatar URL signatures (generated). Changing it logs everyone out.",
+          "required": false
+        },
+        "ALLOWED_EMAILS": {
+          "defaultValue": "",
+          "description": "REQUIRED. Your email address (comma-separated for several). Only these addresses, allowed domains and invited people can sign up.",
+          "required": true
+        },
+        "ALLOWED_EMAIL_DOMAINS": {
+          "defaultValue": "",
+          "description": "Optional. Comma-separated email domains (e.g. example.com) whose users may sign up.",
+          "required": false
+        },
+        "ALLOW_SIGNUP": {
+          "defaultValue": "false",
+          "description": "Keep false: new accounts only for ALLOWED_EMAILS, ALLOWED_EMAIL_DOMAINS or workspace invitations.",
+          "required": false
+        },
+        "DISABLE_WORKSPACE_CREATION": {
+          "defaultValue": "false",
+          "description": "Set true after creating your workspace so other users can only join workspaces they are invited to.",
+          "required": false
+        },
+        "FRONTEND_ORIGIN": {
+          "defaultValue": "https://${{Gateway.RAILWAY_PUBLIC_DOMAIN}}",
+          "description": "Public URL of the app (the Gateway domain). Change it when you add a custom domain.",
+          "required": false
+        },
+        "CORS_ALLOWED_ORIGINS": {
+          "defaultValue": "${{FRONTEND_ORIGIN}}",
+          "description": "Origins allowed for CORS and the realtime WebSocket origin check.",
+          "required": false
+        },
+        "MULTICA_APP_URL": {
+          "defaultValue": "${{FRONTEND_ORIGIN}}",
+          "description": "App URL used in invitation emails, CLI login and links.",
+          "required": false
+        },
+        "MULTICA_PUBLIC_URL": {
+          "defaultValue": "${{FRONTEND_ORIGIN}}",
+          "description": "Public API URL for webhook URLs and the daemon setup command shown in the UI (same origin via the Gateway).",
+          "required": false
+        },
+        "RESEND_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. Resend API key to email login codes and invitations (HTTP API, works on every Railway plan). Without it codes are printed to this service's logs.",
+          "required": false
+        },
+        "RESEND_FROM_EMAIL": {
+          "defaultValue": "",
+          "description": "Sender address on a domain verified in Resend. Required as soon as RESEND_API_KEY is set.",
+          "required": false
+        },
+        "GOOGLE_CLIENT_ID": {
+          "defaultValue": "",
+          "description": "Optional. Google OAuth client ID to show 'Continue with Google'.",
+          "required": false
+        },
+        "GOOGLE_CLIENT_SECRET": {
+          "defaultValue": "",
+          "description": "Optional. Google OAuth client secret (with GOOGLE_CLIENT_ID).",
+          "required": false
+        },
+        "GOOGLE_REDIRECT_URI": {
+          "defaultValue": "${{FRONTEND_ORIGIN}}/auth/callback",
+          "description": "OAuth callback to register in Google Cloud Console when Google login is enabled.",
+          "required": false
+        },
+        "S3_BUCKET": {
+          "defaultValue": "${{Bucket.BUCKET}}",
+          "description": "Railway Bucket name for attachments, avatars and uploads.",
+          "required": false
+        },
+        "S3_REGION": {
+          "defaultValue": "${{Bucket.REGION}}",
+          "description": "Bucket region (used for request signing).",
+          "required": false
+        },
+        "AWS_ENDPOINT_URL": {
+          "defaultValue": "${{Bucket.ENDPOINT}}",
+          "description": "S3-compatible endpoint of the Railway Bucket.",
+          "required": false
+        },
+        "S3_USE_PATH_STYLE": {
+          "defaultValue": "false",
+          "description": "Railway Buckets use virtual-hosted-style addressing. Set true only if the bucket's Credentials tab says path-style.",
+          "required": false
+        },
+        "AWS_ACCESS_KEY_ID": {
+          "defaultValue": "${{Bucket.ACCESS_KEY_ID}}",
+          "description": "Bucket access key.",
+          "required": false
+        },
+        "AWS_SECRET_ACCESS_KEY": {
+          "defaultValue": "${{Bucket.SECRET_ACCESS_KEY}}",
+          "description": "Bucket secret key.",
+          "required": false
+        },
+        "ATTACHMENT_DOWNLOAD_MODE": {
+          "defaultValue": "proxy",
+          "description": "Serve files through the backend so the bucket stays private and needs no CORS setup.",
+          "required": false
+        },
+        "RATE_LIMIT_TRUSTED_PROXIES": {
+          "defaultValue": "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8",
+          "description": "Private ranges (Gateway, web app, Railway edge) whose X-Forwarded-For is trusted for per-IP auth rate limits.",
+          "required": false
+        },
+        "MULTICA_TRUSTED_PROXIES": {
+          "defaultValue": "${{RATE_LIMIT_TRUSTED_PROXIES}}",
+          "description": "Same trusted ranges for the webhook rate limiter and the WebSocket origin check.",
+          "required": false
+        },
+        "REALTIME_METRICS_TOKEN": {
+          "defaultValue": "${{secret(64, \"abcdef0123456789\")}}",
+          "description": "Bearer token protecting /health/realtime metrics (generated).",
+          "required": false
+        },
+        "MULTICA_VCS_INTEGRATION_ENABLED": {
+          "defaultValue": "true",
+          "description": "Enable self-hosted Git providers (Gitea, Forgejo, GitLab), as in upstream's self-host compose.",
+          "required": false
+        },
+        "MULTICA_VCS_SECRET_KEY": {
+          "defaultValue": "${{secret(43, \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\")}}=",
+          "description": "Base64 32-byte key encrypting Git provider tokens at rest (generated). Keep it; losing it makes stored tokens unreadable.",
+          "required": false
+        },
+        "MULTICA_PLUGIN_SECRET_KEY": {
+          "defaultValue": "${{secret(43, \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\")}}=",
+          "description": "Base64 32-byte key for plugin secret settings and hook signing (generated).",
+          "required": false
+        },
+        "MULTICA_SLACK_SECRET_KEY": {
+          "defaultValue": "${{secret(43, \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\")}}=",
+          "description": "Base64 32-byte key encrypting bring-your-own Slack app tokens; enables the Slack integration (generated).",
+          "required": false
+        },
+        "MULTICA_TELEGRAM_SECRET_KEY": {
+          "defaultValue": "${{secret(43, \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\")}}=",
+          "description": "Base64 32-byte key encrypting Telegram bot tokens; enables the Telegram integration (generated).",
+          "required": false
+        },
+        "DO_NOT_TRACK": {
+          "defaultValue": "",
+          "description": "Upstream sends one anonymous deployment snapshot per day. Set 1 to turn it off.",
+          "required": false
+        },
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": {
+          "defaultValue": "30",
+          "description": "Time for open WebSocket and daemon connections to close cleanly on redeploy.",
+          "required": false
+        }
+      }
+    },
+    "Agent Runtime": {
+      "icon": "https://cdn.jsdelivr.net/gh/multica-ai/multica@v0.6.2/apps/web/public/favicon.svg",
+      "source": {
+        "repo": "baranberkay96/multica-railway",
+        "rootDirectory": "/services/agent-runtime"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": null,
+      "healthcheckTimeout": null,
+      "restartPolicyType": "ALWAYS",
+      "restartPolicyMaxRetries": null,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": {
+        "mountPath": "/home/agent"
+      },
+      "variables": {
+        "MULTICA_RUNTIME_TOKEN": {
+          "defaultValue": "",
+          "description": "Optional, set after first login: a personal access token (mul_...) from Settings > API Tokens. Until set, this runtime stays idle.",
+          "required": false
+        },
+        "ANTHROPIC_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. Lets Claude Code agents run on Railway (or log in with a subscription over Railway SSH).",
+          "required": false
+        },
+        "OPENAI_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. Lets Codex agents run on Railway (or run 'codex login' over Railway SSH).",
+          "required": false
+        },
+        "MULTICA_SERVER_URL": {
+          "defaultValue": "http://${{Multica Backend.RAILWAY_PRIVATE_DOMAIN}}:${{Multica Backend.PORT}}",
+          "description": "Backend URL on the private network; the daemon's HTTP and WebSocket traffic never leaves Railway.",
+          "required": false
+        },
+        "MULTICA_APP_URL": {
+          "defaultValue": "${{Multica Backend.FRONTEND_ORIGIN}}",
+          "description": "Public app URL used in links the daemon and agents produce (follows the backend's FRONTEND_ORIGIN).",
+          "required": false
+        },
+        "MULTICA_DAEMON_DEVICE_NAME": {
+          "defaultValue": "Railway",
+          "description": "Name of this machine in Settings > Runtimes.",
+          "required": false
+        },
+        "MULTICA_DAEMON_MAX_CONCURRENT_TASKS": {
+          "defaultValue": "4",
+          "description": "Agent runs executed in parallel on this service (upstream default 20 is sized for workstations).",
+          "required": false
+        },
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": {
+          "defaultValue": "60",
+          "description": "Grace period for the daemon to deregister cleanly on redeploy.",
+          "required": false
+        }
+      }
+    },
+    "Postgres": {
+      "icon": "https://devicons.railway.app/i/postgresql.svg",
+      "source": {
+        "image": "ghcr.io/railwayapp-templates/postgres-ssl:17"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": null,
+      "healthcheckTimeout": null,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": {
+        "mountPath": "/var/lib/postgresql/data"
+      },
+      "variables": {
+        "PGDATA": {
+          "defaultValue": "/var/lib/postgresql/data/pgdata",
+          "description": "Location where the database will be initialized.",
+          "required": false
+        },
+        "PGHOST": {
+          "defaultValue": "${{RAILWAY_PRIVATE_DOMAIN}}",
+          "description": "Railway Private Domain Name.",
+          "required": false
+        },
+        "PGPORT": {
+          "defaultValue": "5432",
+          "description": "Port to connect to Postgres.",
+          "required": false
+        },
+        "PGUSER": {
+          "defaultValue": "${{ POSTGRES_USER }}",
+          "description": "Required variable for the Data panel.",
+          "required": false
+        },
+        "PGDATABASE": {
+          "defaultValue": "${{POSTGRES_DB}}",
+          "description": "Required variable for the Data panel.",
+          "required": false
+        },
+        "PGPASSWORD": {
+          "defaultValue": "${{POSTGRES_PASSWORD}}",
+          "description": "Required variable for the Data panel.",
+          "required": false
+        },
+        "POSTGRES_DB": {
+          "defaultValue": "railway",
+          "description": "Default database created when the image is started.",
+          "required": false
+        },
+        "DATABASE_URL": {
+          "defaultValue": "postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}",
+          "description": "URL to connect to the Postgres database.",
+          "required": false
+        },
+        "POSTGRES_USER": {
+          "defaultValue": "postgres",
+          "description": "User to connect to the Postgres DB.",
+          "required": false
+        },
+        "SSL_CERT_DAYS": {
+          "defaultValue": "820",
+          "description": "SSL certificate expiry in days.",
+          "required": false
+        },
+        "POSTGRES_PASSWORD": {
+          "defaultValue": "${{ secret(32, \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\") }}",
+          "description": "Password to connect to the DB (generated).",
+          "required": false
+        },
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": {
+          "defaultValue": "60",
+          "description": "Allow Postgres to shut down cleanly.",
+          "required": false
+        }
+      }
+    },
+    "Redis": {
+      "icon": "https://cdn.sanity.io/images/sy1jschh/production/0ce0bfdcfbdbf69662b1116671f97c2dd788b655-157x157.svg",
+      "source": {
+        "image": "redis:8.2"
+      },
+      "startCommand": "/bin/sh -c \"rm -rf $RAILWAY_VOLUME_MOUNT_PATH/lost+found/ && exec docker-entrypoint.sh redis-server --requirepass $REDIS_PASSWORD --save 60 1 --dir $RAILWAY_VOLUME_MOUNT_PATH\"",
+      "preDeployCommand": null,
+      "healthcheckPath": null,
+      "healthcheckTimeout": null,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": {
+        "mountPath": "/data"
+      },
+      "variables": {
+        "REDISHOST": {
+          "defaultValue": "${{RAILWAY_PRIVATE_DOMAIN}}",
+          "description": "Private network hostname of the Redis service, only resolvable from services in the same environment.",
+          "required": false
+        },
+        "REDISPORT": {
+          "defaultValue": "6379",
+          "description": "Port that Redis listens on.",
+          "required": false
+        },
+        "REDISUSER": {
+          "defaultValue": "default",
+          "description": "Username for authenticating with Redis.",
+          "required": false
+        },
+        "REDIS_URL": {
+          "defaultValue": "redis://${{ REDISUSER }}:${{ REDIS_PASSWORD }}@${{ REDISHOST }}:${{ REDISPORT }}",
+          "description": "Connection string for connecting to Redis using the private network.",
+          "required": false
+        },
+        "REDISPASSWORD": {
+          "defaultValue": "${{REDIS_PASSWORD}}",
+          "description": "Alias of REDIS_PASSWORD for clients that expect the unseparated name.",
+          "required": false
+        },
+        "REDIS_PASSWORD": {
+          "defaultValue": "${{ secret(32, \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\") }}",
+          "description": "Randomly generated password for authenticating with Redis.",
+          "required": false
+        }
+      }
+    }
+  },
+  "buckets": [
+    "Bucket"
+  ]
+}

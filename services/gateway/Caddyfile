@@ -1,0 +1,56 @@
+# Multica single-origin gateway for Railway.
+#
+# Follows upstream's documented single-origin layout (self-host quickstart,
+# "single origin"): the web image cannot proxy WebSocket upgrades, so the
+# browser realtime socket, the daemon socket and the CLI health probe go
+# straight to the backend; everything else goes to the web app, which forwards
+# /api, /auth, /v1 and /uploads to the backend itself. Browser, CLI and daemons
+# all use this one public URL, so cookies never cross domains.
+
+{
+	admin off
+	auto_https off
+	servers {
+		# Railway's edge reaches the service from private address space. Trust
+		# its X-Forwarded-* headers so the backend's per-IP rate limits see the
+		# real client address instead of the edge's.
+		trusted_proxies static private_ranges 100.64.0.0/10
+		client_ip_headers X-Forwarded-For
+	}
+}
+
+(backend) {
+	reverse_proxy {$MULTICA_BACKEND_UPSTREAM} {
+		flush_interval -1
+		lb_try_duration 10s
+	}
+}
+
+:{$PORT:8080} {
+	# Railway healthcheck for the gateway itself (no upstream involved).
+	handle /_gateway/health {
+		respond "ok" 200
+	}
+
+	# CLI reachability probe: `multica setup` GETs {server-url}/health.
+	handle /health {
+		import backend
+	}
+
+	# Browser realtime WebSocket.
+	handle /ws {
+		import backend
+	}
+
+	# Daemon long-connection WebSocket ({server-url}/api/daemon/ws).
+	handle /api/daemon/ws {
+		import backend
+	}
+
+	# Everything else: the Multica web app.
+	handle {
+		reverse_proxy {$MULTICA_WEB_UPSTREAM} {
+			lb_try_duration 10s
+		}
+	}
+}
