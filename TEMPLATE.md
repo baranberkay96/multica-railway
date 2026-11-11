@@ -1,10 +1,10 @@
-# Multica v0.6 AI Agent Team Workspace: Railway template spec
+# Multica AI Agent Team Workspace: Railway template spec
 
 ## Listing
 
 | Field | Value |
 |---|---|
-| Name | **Multica v0.6 AI Agent Team Workspace** (36 chars; `v0.6` = major.minor of the pinned `v0.6.2`, per the 0.x naming rule) |
+| Name | **Multica AI Agent Team Workspace** (36 chars; `v0.6` = major.minor of the pinned `v0.6.2`, per the 0.x naming rule) |
 | Description | Assign issues to coding agents like teammates and track every run. (66 chars) |
 | Category | AI/ML |
 | Tags | multica, ai-agents, coding-agents, claude-code, codex, issue-tracker, project-management, postgres, redis |

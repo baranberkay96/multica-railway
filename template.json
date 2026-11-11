@@ -1,5 +1,6 @@
 {
-  "name": "Multica v0.6 AI Agent Team Workspace",
+  "name": "Multica AI Agent Team Workspace",
+  "idSeed": "Multica v0.6 AI Agent Team Workspace",
   "description": "Assign issues to coding agents like teammates and track every run.",
   "category": "AI/ML",
   "tags": [
